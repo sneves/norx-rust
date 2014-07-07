@@ -376,7 +376,7 @@ impl<T : Zero> Drop for Sponge<T> {
 
 
 
-fn _encrypt<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
+fn encrypt_cfg<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(_,_,_,abits) = cfg;
     let alen = abits / 8;
     let mlen = m.len();
@@ -395,7 +395,7 @@ fn _encrypt<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Confi
     return Some(c);
 }
 
-fn _decrypt<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
+fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(_,_,_,abits) = cfg;
     let alen = abits / 8;
     let clen = c.len();
@@ -425,16 +425,16 @@ fn _decrypt<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Confi
 pub fn encrypt(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(w, _, _, _) = cfg;
     match w {
-        Norx32 => _encrypt::<u32>(h, m, t, n, k, cfg),
-        Norx64 => _encrypt::<u64>(h, m, t, n, k, cfg),
+        Norx32 => encrypt_cfg::<u32>(h, m, t, n, k, cfg),
+        Norx64 => encrypt_cfg::<u64>(h, m, t, n, k, cfg),
     }
 }
 
 pub fn decrypt(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(w, _, _, _) = cfg;
     match w {
-        Norx32 => _decrypt::<u32>(h, c, t, n, k, cfg),
-        Norx64 => _decrypt::<u64>(h, c, t, n, k, cfg),
+        Norx32 => decrypt_cfg::<u32>(h, c, t, n, k, cfg),
+        Norx64 => decrypt_cfg::<u64>(h, c, t, n, k, cfg),
     }
 }
 
