@@ -1,6 +1,6 @@
 #![macro_escape]
 
-use std::num::{Zero,One,cast};
+use std::num::{Zero,cast};
 use std::slice::bytes::copy_memory;
 use std::mem::size_of;
 
@@ -20,7 +20,7 @@ fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
     let mut x : T = Zero::zero();
     for i in range(0, n) {
         let b: T = cast(v[i]).unwrap();
-        x = x | (b << cast(i*8).unwrap());
+        x = x | (b << (i*8));
     }
     return x;
 }
@@ -28,9 +28,10 @@ fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
 #[inline]
 fn store_le<T : Int + NumCast>(v: &mut [u8], mut x: T) {
     let n = size_of::<T>();
+    let m : T = cast(0xFFu8).unwrap();
     for i in range(0, n) {
-        v[i] = cast(x & cast(0xFFu8).unwrap()).unwrap();
-        x = x >> cast(8u8).unwrap();
+        v[i] = cast(x & m).unwrap();
+        x    = x >> 8;
     }
 }
 
@@ -85,7 +86,7 @@ fn constants<T : NumCast>() -> Option<(T, T, T, T)> {
 #[inline]
 #[allow(non_snake_case_functions)]
 fn U<T: Int>(x: T, y: T) -> T {
-    x ^ y ^ ((x & y) << One::one())
+    x ^ y ^ ((x & y) << 1)
 }
 
 #[inline]
@@ -189,12 +190,11 @@ impl<T: Int> Sponge<T> {
     }
 
     fn inject_param(&mut self) {
-        let w = bits::<T>();
-        let mut p : T = Zero::zero();
-        p = p | cast(self.r << 26u).unwrap();
-        p = p | cast(self.d << 18u).unwrap();
-        p = p | cast(     w << 10u).unwrap();
-        p = p | cast(self.a <<  0u).unwrap();
+        let w : T = cast(bits::<T>()).unwrap();
+        let r : T = cast(self.r).unwrap();
+        let d : T = cast(self.d).unwrap();
+        let a : T = cast(self.a).unwrap();
+        let p = (r << 26) | (d << 18) | (w << 10) | (a << 0);
         self.s[14] = self.s[14] ^ p;
         self.permute();
     }
