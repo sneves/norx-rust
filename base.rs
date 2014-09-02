@@ -84,13 +84,13 @@ fn constants<T : NumCast>() -> Option<(T, T, T, T)> {
 }
 
 #[inline]
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 fn U<T: Int>(x: T, y: T) -> T {
     x ^ y ^ ((x & y) << 1)
 }
 
 #[inline]
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 fn G<T : Int>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
     let r = rotations::<T>().unwrap();
     a = U(a, b); d = d ^ a; d = d.rotate_right(r[0]);
@@ -100,7 +100,7 @@ fn G<T : Int>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
     return (a, b, c, d);
 }
 
-#[allow(non_snake_case_functions)]
+#[allow(non_snake_case)]
 fn F<T: Int>(x : &mut [T, ..NORX_B]) {
     macro_rules!G(
         ($a: expr, $b: expr, $c: expr, $d: expr) => 
