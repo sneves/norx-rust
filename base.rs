@@ -128,7 +128,7 @@ fn F<T: Int>(x : &mut [T, ..NORX_B]) {
 
 #[inline]
 fn pad(output: &mut [u8], outlen: uint, input: &[u8], inlen: uint) {
-    for x in output.mut_iter() { *x = 0u8; }
+    for x in output.iter_mut() { *x = 0u8; }
     copy_memory(output, input);
     output[inlen]       = 0x01;
     output[outlen - 1] |= 0x80;
@@ -268,7 +268,7 @@ impl<T: Int> Sponge<T> {
         self.permute();
         for i in range(0, NORX_R) {
             self.s[i] = self.s[i] ^ load_le(input.slice(i*w, (i+1)*w));
-            store_le(output.mut_slice(i*w, (i+1)*w), self.s[i]);
+            store_le(output.slice_mut(i*w, (i+1)*w), self.s[i]);
         }
     }
 
@@ -281,14 +281,14 @@ impl<T: Int> Sponge<T> {
             let mut inlen  = input.len();
             let mut offset = 0;
             while inlen >= block_size {
-                self.encrypt_block(output.mut_slice_from(offset), input.slice_from(offset));
+                self.encrypt_block(output.slice_from_mut(offset), input.slice_from(offset));
                 inlen  -= block_size;
                 offset += block_size;
             }
             pad(lastblock1, block_size, input.slice_from(offset), inlen);
-            self.encrypt_block(lastblock2.mut_slice_to(block_size), 
+            self.encrypt_block(lastblock2.slice_to_mut(block_size), 
                                lastblock1.slice_to(block_size));
-            copy_memory(output.mut_slice_from(offset), lastblock2.slice_to(inlen));
+            copy_memory(output.slice_from_mut(offset), lastblock2.slice_to(inlen));
         }
     }
 
@@ -298,7 +298,7 @@ impl<T: Int> Sponge<T> {
         self.permute();
         for i in range(0, NORX_R) {
             let x : T = load_le(input.slice_from(i*w));
-            store_le(output.mut_slice_from(i*w), self.s[i] ^ x);
+            store_le(output.slice_from_mut(i*w), self.s[i] ^ x);
             self.s[i] = x;
         }
     }
@@ -312,7 +312,7 @@ impl<T: Int> Sponge<T> {
 
         let mut lastblock = [0u8,..MAX_RATE_BYTES];
         for i in range(0, NORX_R) {
-            store_le(lastblock.mut_slice_from(i*w), self.s[i]);
+            store_le(lastblock.slice_from_mut(i*w), self.s[i]);
         }
 
         copy_memory(lastblock, input);
@@ -321,7 +321,7 @@ impl<T: Int> Sponge<T> {
 
         for i in range(0, NORX_R) {
             let x : T = load_le(lastblock.slice_from(i*w));
-            store_le(lastblock.mut_slice_from(i*w), self.s[i] ^ x);
+            store_le(lastblock.slice_from_mut(i*w), self.s[i] ^ x);
             self.s[i] = x;
         }
 
@@ -334,11 +334,11 @@ impl<T: Int> Sponge<T> {
             let mut inlen  = input.len();
             let mut offset = 0;
             while inlen >= block_size {
-                self.decrypt_block(output.mut_slice_from(offset), input.slice_from(offset));
+                self.decrypt_block(output.slice_from_mut(offset), input.slice_from(offset));
                 inlen  -= block_size;
                 offset += block_size;
             }
-            self.decrypt_lastblock(output.mut_slice_from(offset), input.slice_from(offset));
+            self.decrypt_lastblock(output.slice_from_mut(offset), input.slice_from(offset));
         }
     }
 
@@ -349,7 +349,7 @@ impl<T: Int> Sponge<T> {
         self.permute();
         self.permute();
         for i in range(0, NORX_R) {
-            store_le(lastblock.mut_slice_from(i*w), self.s[i]);
+            store_le(lastblock.slice_from_mut(i*w), self.s[i]);
         }
         copy_memory(tag, lastblock.slice_to(self.a / 8));
     }
@@ -368,7 +368,7 @@ impl<T: Int> Sponge<T> {
 #[unsafe_destructor]
 impl<T : Zero> Drop for Sponge<T> {
     fn drop(&mut self) {
-        for x in self.s.mut_iter() {
+        for x in self.s.iter_mut() {
             *x = Zero::zero();
         }
     }
@@ -388,9 +388,9 @@ fn encrypt_cfg<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
          None   => return None
     };
     s.absorb_header(h);
-    s.encrypt_payload(c.mut_slice_to(mlen), m);
+    s.encrypt_payload(c.slice_to_mut(mlen), m);
     s.absorb_trailer(t);
-    s.finalize(c.mut_slice_from(mlen));
+    s.finalize(c.slice_from_mut(mlen));
 
     return Some(c);
 }
