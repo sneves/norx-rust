@@ -4,15 +4,15 @@ use std::num::{Zero,cast};
 use std::slice::bytes::copy_memory;
 use std::mem::size_of;
 
-static NORX_B : uint = 16; // total words
-static NORX_C : uint =  6; // capacity words
-static NORX_K : uint =  4; // key words
-static NORX_N : uint =  2; // nonce words
-static NORX_R : uint = NORX_B - NORX_C; // rate words
-static NORX_A : uint = NORX_R; // maximum tag size
+const NORX_B : uint = 16; // total words
+const NORX_C : uint =  6; // capacity words
+const NORX_K : uint =  4; // key words
+const NORX_N : uint =  2; // nonce words
+const NORX_R : uint = NORX_B - NORX_C; // rate words
+const NORX_A : uint = NORX_R; // maximum tag size
 
 // XXX: hack; Rust could really use compile-time sizeof(T)
-static MAX_RATE_BYTES : uint = 64 * NORX_R / 8; 
+const MAX_RATE_BYTES : uint = 64 * NORX_R / 8;
 
 #[inline]
 fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
@@ -441,10 +441,10 @@ pub fn decrypt(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) ->
 macro_rules! defmodule(
     ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) => 
     (
-        static W : WordSize = $W;
-        static R : uint = $R;
-        static D : uint = $D;
-        static A : uint = $A;
+        const W : WordSize = $W;
+        const R : uint = $R;
+        const D : uint = $D;
+        const A : uint = $A;
 
         pub fn encrypt(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8]) -> Vec<u8> {
             base::encrypt(h, m, t, n, k, base::Config(W, R, D, A)).expect("norx: incorrect key or nonce size")
@@ -456,10 +456,10 @@ macro_rules! defmodule(
 
         #[test]
         pub fn test() {
-            static L  : uint = 256;
-            static K  : uint = ($W as uint) * 4u / 8u;
-            static N  : uint = ($W as uint) * 2u / 8u; 
-            static T  : uint = K;
+            const L  : uint = 256;
+            const K  : uint = ($W as uint) * 4u / 8u;
+            const N  : uint = ($W as uint) * 2u / 8u;
+            const T  : uint = K;
             let mut w : [u8, ..L] = [0, ..L];
             let mut h : [u8, ..L] = [0, ..L];
             let mut k : [u8, ..K] = [0, ..K];
