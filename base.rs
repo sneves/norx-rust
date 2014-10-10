@@ -146,6 +146,7 @@ fn verify(x: &[u8], y: &[u8]) -> bool {
     return r == 0;
 }
 
+#[allow(dead_code)]
 enum Tag {
     HeaderTag  = 1 << 0,
     PayloadTag = 1 << 1,
@@ -481,7 +482,7 @@ macro_rules! defmodule(
             for i in range(0, L) {
                 let j = T * i + i*(i-1)/2;
                 let mut c = encrypt(h.slice_to(i), w.slice_to(i), [], n, k);
-                assert!(c.as_slice() == kat.slice(j, j + i + T));
+                assert!(c.as_slice() == KAT.slice(j, j + i + T));
                 let m = decrypt(h.slice_to(i), c.as_slice(), [], n, k).expect("bad ciphertext");
                 assert!(m.as_slice() == w.slice_to(i));
                 // This one is expected to fail
