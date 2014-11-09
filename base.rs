@@ -486,7 +486,7 @@ macro_rules! defmodule(
                 let m = decrypt(h.slice_to(i), c.as_slice(), [], n, k).expect("bad ciphertext");
                 assert!(m.as_slice() == w.slice_to(i));
                 // This one is expected to fail
-                *c.get_mut(i) ^= 1;
+                c[i] ^= 1;
                 match decrypt(h.slice_to(i), c.as_slice(), [], n, k) {
                     Some(_) => assert!(false),
                     None    => assert!(true)
