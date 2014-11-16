@@ -1,6 +1,6 @@
 #![macro_escape]
 
-use std::num::{Zero,cast};
+use std::num::{Int,NumCast,cast};
 use std::slice::bytes::copy_memory;
 use std::mem::size_of;
 
@@ -17,7 +17,7 @@ const MAX_RATE_BYTES : uint = 64 * NORX_R / 8;
 #[inline]
 fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
     let n = size_of::<T>();
-    let mut x : T = Zero::zero();
+    let mut x : T = Int::zero();
     for i in range(0, n) {
         let b: T = cast(v[i]).unwrap();
         x = x | (b << (i*8));
@@ -360,17 +360,17 @@ impl<T: Int> Sponge<T> {
         if !is_valid_config(cfg) { return None; }
         if k.len() != key_bytes::<T>() { return None; }
         if n.len() != nonce_bytes::<T>() { return None; }
-        let mut s : Sponge<T> = Sponge{s : [Zero::zero(), ..16], r : r, d : d, a : a};
+        let mut s : Sponge<T> = Sponge{s : [Int::zero(), ..16], r : r, d : d, a : a};
         s.init(n, k);
         return Some(s);
     }
 }
 
 #[unsafe_destructor]
-impl<T : Zero> Drop for Sponge<T> {
+impl<T : Int> Drop for Sponge<T> {
     fn drop(&mut self) {
         for x in self.s.iter_mut() {
-            *x = Zero::zero();
+            *x = Int::zero();
         }
     }
 }
