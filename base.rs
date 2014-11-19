@@ -250,7 +250,7 @@ impl<T: Int> Sponge<T> {
                 offset += block_size;
             }
 
-            pad(lastblock, block_size, input.slice_from(offset), inlen);
+            pad(&mut lastblock, block_size, input.slice_from(offset), inlen);
             self.absorb_block(lastblock.slice_to(block_size), tag);
         }
     }
@@ -286,7 +286,7 @@ impl<T: Int> Sponge<T> {
                 inlen  -= block_size;
                 offset += block_size;
             }
-            pad(lastblock1, block_size, input.slice_from(offset), inlen);
+            pad(&mut lastblock1, block_size, input.slice_from(offset), inlen);
             self.encrypt_block(lastblock2.slice_to_mut(block_size), 
                                lastblock1.slice_to(block_size));
             copy_memory(output.slice_from_mut(offset), lastblock2.slice_to(inlen));
@@ -316,7 +316,7 @@ impl<T: Int> Sponge<T> {
             store_le(lastblock.slice_from_mut(i*w), self.s[i]);
         }
 
-        copy_memory(lastblock, input);
+        copy_memory(&mut lastblock, input);
         lastblock[input.len()]  ^= 0x01u8;
         lastblock[block_size-1] ^= 0x80u8;
 
@@ -414,7 +414,7 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     s.absorb_header(h);
     s.decrypt_payload(m.as_mut_slice(), c.slice_to(mlen));
     s.absorb_trailer(t);
-    s.finalize(a);
+    s.finalize(&mut a);
 
     if verify(c.slice_from(mlen), a.slice_to(alen)) {
         return Some(m);
@@ -481,13 +481,13 @@ macro_rules! defmodule(
 
             for i in range(0, L) {
                 let j = T * i + i*(i-1)/2;
-                let mut c = encrypt(h.slice_to(i), w.slice_to(i), [], n, k);
+                let mut c = encrypt(h.slice_to(i), w.slice_to(i), &[], &n, &k);
                 assert!(c.as_slice() == KAT.slice(j, j + i + T));
-                let m = decrypt(h.slice_to(i), c.as_slice(), [], n, k).expect("bad ciphertext");
+                let m = decrypt(h.slice_to(i), c.as_slice(), &[], &n, &k).expect("bad ciphertext");
                 assert!(m.as_slice() == w.slice_to(i));
                 // This one is expected to fail
                 c[i] ^= 1;
-                match decrypt(h.slice_to(i), c.as_slice(), [], n, k) {
+                match decrypt(h.slice_to(i), c.as_slice(), &[], &n, &k) {
                     Some(_) => assert!(false),
                     None    => assert!(true)
                 }
