@@ -256,16 +256,16 @@ impl<T: Int> Sponge<T> {
     }
 
     pub fn absorb_header(&mut self, input : &[u8]) {
-        self.absorb(input, HeaderTag);
+        self.absorb(input, Tag::HeaderTag);
     }
 
     pub fn absorb_trailer(&mut self, input : &[u8]) {
-        self.absorb(input, TrailerTag);
+        self.absorb(input, Tag::TrailerTag);
     }
 
     fn encrypt_block(&mut self, output: &mut [u8], input: &[u8]) {          
         let w = bytes::<T>();
-        self.inject_tag(PayloadTag);
+        self.inject_tag(Tag::PayloadTag);
         self.permute();
         for i in range(0, NORX_R) {
             self.s[i] = self.s[i] ^ load_le(input.slice(i*w, (i+1)*w));
@@ -295,7 +295,7 @@ impl<T: Int> Sponge<T> {
 
     fn decrypt_block(&mut self, output: &mut [u8], input: &[u8]) {
         let w = bytes::<T>();
-        self.inject_tag(PayloadTag);
+        self.inject_tag(Tag::PayloadTag);
         self.permute();
         for i in range(0, NORX_R) {
             let x : T = load_le(input.slice_from(i*w));
@@ -308,7 +308,7 @@ impl<T: Int> Sponge<T> {
         let w = bytes::<T>();
         let block_size = rate_bytes::<T>();
         
-        self.inject_tag(PayloadTag);
+        self.inject_tag(Tag::PayloadTag);
         self.permute();
 
         let mut lastblock = [0u8,..MAX_RATE_BYTES];
@@ -346,7 +346,7 @@ impl<T: Int> Sponge<T> {
     pub fn finalize(&mut self, tag: &mut [u8]) {
         let w = bytes::<T>();
         let mut lastblock = [0u8, ..MAX_RATE_BYTES];
-        self.inject_tag(FinalTag);
+        self.inject_tag(Tag::FinalTag);
         self.permute();
         self.permute();
         for i in range(0, NORX_R) {
@@ -426,23 +426,23 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
 pub fn encrypt(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(w, _, _, _) = cfg;
     match w {
-        Norx32 => encrypt_cfg::<u32>(h, m, t, n, k, cfg),
-        Norx64 => encrypt_cfg::<u64>(h, m, t, n, k, cfg),
+        WordSize::Norx32 => encrypt_cfg::<u32>(h, m, t, n, k, cfg),
+        WordSize::Norx64 => encrypt_cfg::<u64>(h, m, t, n, k, cfg),
     }
 }
 
 pub fn decrypt(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(w, _, _, _) = cfg;
     match w {
-        Norx32 => decrypt_cfg::<u32>(h, c, t, n, k, cfg),
-        Norx64 => decrypt_cfg::<u64>(h, c, t, n, k, cfg),
+        WordSize::Norx32 => decrypt_cfg::<u32>(h, c, t, n, k, cfg),
+        WordSize::Norx64 => decrypt_cfg::<u64>(h, c, t, n, k, cfg),
     }
 }
 
 macro_rules! defmodule(
     ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) => 
     (
-        const W : WordSize = $W;
+        const W : WordSize = WordSize::$W;
         const R : uint = $R;
         const D : uint = $D;
         const A : uint = $A;
@@ -458,8 +458,8 @@ macro_rules! defmodule(
         #[test]
         pub fn test() {
             const L  : uint = 256;
-            const K  : uint = ($W as uint) * 4u / 8u;
-            const N  : uint = ($W as uint) * 2u / 8u;
+            const K  : uint = (WordSize::$W as uint) * 4u / 8u;
+            const N  : uint = (WordSize::$W as uint) * 2u / 8u;
             const T  : uint = K;
             let mut w : [u8, ..L] = [0, ..L];
             let mut h : [u8, ..L] = [0, ..L];

@@ -1,5 +1,5 @@
 use base;
-use base::{WordSize,Config,Norx64};
+use base::{Config, WordSize};
 
 defmodule!(norx6461,Norx64,6,1,256)
 
