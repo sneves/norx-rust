@@ -250,22 +250,22 @@ impl<T: Int> Sponge<T> {
                 offset += block_size;
             }
 
-            pad(lastblock, block_size, input.slice_from(offset), inlen);
+            pad(&mut lastblock, block_size, input.slice_from(offset), inlen);
             self.absorb_block(lastblock.slice_to(block_size), tag);
         }
     }
 
     pub fn absorb_header(&mut self, input : &[u8]) {
-        self.absorb(input, HeaderTag);
+        self.absorb(input, Tag::HeaderTag);
     }
 
     pub fn absorb_trailer(&mut self, input : &[u8]) {
-        self.absorb(input, TrailerTag);
+        self.absorb(input, Tag::TrailerTag);
     }
 
     fn encrypt_block(&mut self, output: &mut [u8], input: &[u8]) {          
         let w = bytes::<T>();
-        self.inject_tag(PayloadTag);
+        self.inject_tag(Tag::PayloadTag);
         self.permute();
         for i in range(0, NORX_R) {
             self.s[i] = self.s[i] ^ load_le(input.slice(i*w, (i+1)*w));
@@ -286,7 +286,7 @@ impl<T: Int> Sponge<T> {
                 inlen  -= block_size;
                 offset += block_size;
             }
-            pad(lastblock1, block_size, input.slice_from(offset), inlen);
+            pad(&mut lastblock1, block_size, input.slice_from(offset), inlen);
             self.encrypt_block(lastblock2.slice_to_mut(block_size), 
                                lastblock1.slice_to(block_size));
             copy_memory(output.slice_from_mut(offset), lastblock2.slice_to(inlen));
@@ -295,7 +295,7 @@ impl<T: Int> Sponge<T> {
 
     fn decrypt_block(&mut self, output: &mut [u8], input: &[u8]) {
         let w = bytes::<T>();
-        self.inject_tag(PayloadTag);
+        self.inject_tag(Tag::PayloadTag);
         self.permute();
         for i in range(0, NORX_R) {
             let x : T = load_le(input.slice_from(i*w));
@@ -308,7 +308,7 @@ impl<T: Int> Sponge<T> {
         let w = bytes::<T>();
         let block_size = rate_bytes::<T>();
         
-        self.inject_tag(PayloadTag);
+        self.inject_tag(Tag::PayloadTag);
         self.permute();
 
         let mut lastblock = [0u8,..MAX_RATE_BYTES];
@@ -316,7 +316,7 @@ impl<T: Int> Sponge<T> {
             store_le(lastblock.slice_from_mut(i*w), self.s[i]);
         }
 
-        copy_memory(lastblock, input);
+        copy_memory(&mut lastblock, input);
         lastblock[input.len()]  ^= 0x01u8;
         lastblock[block_size-1] ^= 0x80u8;
 
@@ -346,7 +346,7 @@ impl<T: Int> Sponge<T> {
     pub fn finalize(&mut self, tag: &mut [u8]) {
         let w = bytes::<T>();
         let mut lastblock = [0u8, ..MAX_RATE_BYTES];
-        self.inject_tag(FinalTag);
+        self.inject_tag(Tag::FinalTag);
         self.permute();
         self.permute();
         for i in range(0, NORX_R) {
@@ -414,7 +414,7 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     s.absorb_header(h);
     s.decrypt_payload(m.as_mut_slice(), c.slice_to(mlen));
     s.absorb_trailer(t);
-    s.finalize(a);
+    s.finalize(&mut a);
 
     if verify(c.slice_from(mlen), a.slice_to(alen)) {
         return Some(m);
@@ -426,23 +426,23 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
 pub fn encrypt(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(w, _, _, _) = cfg;
     match w {
-        Norx32 => encrypt_cfg::<u32>(h, m, t, n, k, cfg),
-        Norx64 => encrypt_cfg::<u64>(h, m, t, n, k, cfg),
+        WordSize::Norx32 => encrypt_cfg::<u32>(h, m, t, n, k, cfg),
+        WordSize::Norx64 => encrypt_cfg::<u64>(h, m, t, n, k, cfg),
     }
 }
 
 pub fn decrypt(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(w, _, _, _) = cfg;
     match w {
-        Norx32 => decrypt_cfg::<u32>(h, c, t, n, k, cfg),
-        Norx64 => decrypt_cfg::<u64>(h, c, t, n, k, cfg),
+        WordSize::Norx32 => decrypt_cfg::<u32>(h, c, t, n, k, cfg),
+        WordSize::Norx64 => decrypt_cfg::<u64>(h, c, t, n, k, cfg),
     }
 }
 
 macro_rules! defmodule(
     ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) => 
     (
-        const W : WordSize = $W;
+        const W : WordSize = WordSize::$W;
         const R : uint = $R;
         const D : uint = $D;
         const A : uint = $A;
@@ -458,8 +458,8 @@ macro_rules! defmodule(
         #[test]
         pub fn test() {
             const L  : uint = 256;
-            const K  : uint = ($W as uint) * 4u / 8u;
-            const N  : uint = ($W as uint) * 2u / 8u;
+            const K  : uint = (WordSize::$W as uint) * 4u / 8u;
+            const N  : uint = (WordSize::$W as uint) * 2u / 8u;
             const T  : uint = K;
             let mut w : [u8, ..L] = [0, ..L];
             let mut h : [u8, ..L] = [0, ..L];
@@ -481,13 +481,13 @@ macro_rules! defmodule(
 
             for i in range(0, L) {
                 let j = T * i + i*(i-1)/2;
-                let mut c = encrypt(h.slice_to(i), w.slice_to(i), [], n, k);
+                let mut c = encrypt(h.slice_to(i), w.slice_to(i), &[], &n, &k);
                 assert!(c.as_slice() == KAT.slice(j, j + i + T));
-                let m = decrypt(h.slice_to(i), c.as_slice(), [], n, k).expect("bad ciphertext");
+                let m = decrypt(h.slice_to(i), c.as_slice(), &[], &n, &k).expect("bad ciphertext");
                 assert!(m.as_slice() == w.slice_to(i));
                 // This one is expected to fail
                 c[i] ^= 1;
-                match decrypt(h.slice_to(i), c.as_slice(), [], n, k) {
+                match decrypt(h.slice_to(i), c.as_slice(), &[], &n, &k) {
                     Some(_) => assert!(false),
                     None    => assert!(true)
                 }
