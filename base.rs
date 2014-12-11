@@ -155,13 +155,16 @@ enum Tag {
     BranchTag  = 1 << 4,
     MergeTag   = 1 << 5
 }
+impl Copy for Tag {}
 
 pub enum WordSize {
     Norx32 = 32,
     Norx64 = 64
 }
+impl Copy for WordSize {}
 
 pub struct Config(pub WordSize, pub uint, pub uint, pub uint);
+impl Copy for Config {}
 
 fn is_valid_config(cfg: Config) -> bool {
     let Config(w,r,d,a) = cfg;
