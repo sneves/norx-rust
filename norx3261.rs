@@ -1,7 +1,7 @@
 use base;
 use base::{Config, WordSize};
 
-defmodule!(norx3261,Norx32,6,1,128)
+defmodule!(norx3261,Norx32,6,1,128);
 
 pub static KAT : [u8; 36736] = 
 [

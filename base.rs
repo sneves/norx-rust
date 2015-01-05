@@ -111,7 +111,7 @@ fn F<T: Int>(x : &mut [T; NORX_B]) {
             $a = U($a, $b); $d = $d ^ $a; $d = $d.rotate_right(r[2]);
             $c = U($c, $d); $b = $b ^ $c; $b = $b.rotate_right(r[3]);
         })
-    )
+    );
 
     // Column step
     G!(x[ 0], x[ 4], x[ 8], x[12]);
@@ -498,5 +498,5 @@ macro_rules! defmodule(
         }
 
     )
-)
+);
 
