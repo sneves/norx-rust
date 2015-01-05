@@ -1,5 +1,6 @@
 #![macro_escape]
 
+use std::iter::repeat;
 use std::num::{Int,NumCast,cast};
 use std::slice::bytes::copy_memory;
 use std::mem::size_of;
@@ -386,7 +387,7 @@ fn encrypt_cfg<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     let mlen = m.len();
     let clen = mlen + alen;
 
-    let mut c = Vec::from_elem(clen, 0u8);
+    let mut c : Vec<u8> = repeat(0u8).take(clen).collect();
     let mut s : Sponge<T> = match Sponge::new(cfg, n, k) {
         Some(s) => s,
          None   => return None
@@ -407,8 +408,8 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     if clen < alen {
         return None;
     }
-    let mut m = Vec::from_elem(mlen, 0u8);
-    let mut a : [u8, ..32] = [0, ..32];
+    let mut m : Vec<u8> = repeat(0u8).take(mlen).collect();
+    let mut a : [u8; 32] = [0; 32];
     let mut s : Sponge<T> = match Sponge::new(cfg, n, k) {
         Some(s) => s,
         None    => return None
