@@ -61,7 +61,7 @@ fn nonce_bytes<T>() -> uint {
 }
 
 #[inline]
-fn rotations<T: Int>() -> Option<[uint, ..4]> {
+fn rotations<T: Int>() -> Option<[uint; 4]> {
     match bits::<T>() {
         32 => Some([ 8, 11, 16, 31]),
         64 => Some([ 8, 19, 40, 63]),
@@ -101,7 +101,7 @@ fn G<T : Int>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
 }
 
 #[allow(non_snake_case)]
-fn F<T: Int>(x : &mut [T, ..NORX_B]) {
+fn F<T: Int>(x : &mut [T; NORX_B]) {
     macro_rules!G(
         ($a: expr, $b: expr, $c: expr, $d: expr) => 
         ({
@@ -175,7 +175,7 @@ fn is_valid_config(cfg: Config) -> bool {
 }
 
 struct Sponge<T> {
-    s : [T, ..NORX_B],
+    s : [T; NORX_B],
     r : uint,
     d : uint,
     a : uint
@@ -243,7 +243,7 @@ impl<T: Int> Sponge<T> {
     fn absorb(&mut self, input : &[u8], tag: Tag) {
         let block_size = rate_bytes::<T>();
         if input.len() > 0 {
-            let mut lastblock = [0u8, ..MAX_RATE_BYTES];
+            let mut lastblock = [0u8; MAX_RATE_BYTES];
             let mut inlen  = input.len();
             let mut offset = 0;
 
@@ -280,8 +280,8 @@ impl<T: Int> Sponge<T> {
 
         let block_size = rate_bytes::<T>();
         if input.len() > 0 {
-            let mut lastblock1 = [0u8, ..MAX_RATE_BYTES];
-            let mut lastblock2 = [0u8, ..MAX_RATE_BYTES];
+            let mut lastblock1 = [0u8; MAX_RATE_BYTES];
+            let mut lastblock2 = [0u8; MAX_RATE_BYTES];
             let mut inlen  = input.len();
             let mut offset = 0;
             while inlen >= block_size {
@@ -314,7 +314,7 @@ impl<T: Int> Sponge<T> {
         self.inject_tag(Tag::PayloadTag);
         self.permute();
 
-        let mut lastblock = [0u8,..MAX_RATE_BYTES];
+        let mut lastblock = [0u8; MAX_RATE_BYTES];
         for i in range(0, NORX_R) {
             store_le(lastblock.slice_from_mut(i*w), self.s[i]);
         }
@@ -348,7 +348,7 @@ impl<T: Int> Sponge<T> {
 
     pub fn finalize(&mut self, tag: &mut [u8]) {
         let w = bytes::<T>();
-        let mut lastblock = [0u8, ..MAX_RATE_BYTES];
+        let mut lastblock = [0u8; MAX_RATE_BYTES];
         self.inject_tag(Tag::FinalTag);
         self.permute();
         self.permute();
@@ -363,7 +363,7 @@ impl<T: Int> Sponge<T> {
         if !is_valid_config(cfg) { return None; }
         if k.len() != key_bytes::<T>() { return None; }
         if n.len() != nonce_bytes::<T>() { return None; }
-        let mut s : Sponge<T> = Sponge{s : [Int::zero(), ..16], r : r, d : d, a : a};
+        let mut s : Sponge<T> = Sponge{s : [Int::zero(); 16], r : r, d : d, a : a};
         s.init(n, k);
         return Some(s);
     }
@@ -464,10 +464,10 @@ macro_rules! defmodule(
             const K  : uint = (WordSize::$W as uint) * 4u / 8u;
             const N  : uint = (WordSize::$W as uint) * 2u / 8u;
             const T  : uint = K;
-            let mut w : [u8, ..L] = [0, ..L];
-            let mut h : [u8, ..L] = [0, ..L];
-            let mut k : [u8, ..K] = [0, ..K];
-            let mut n : [u8, ..N] = [0, ..N];
+            let mut w : [u8; L] = [0; L];
+            let mut h : [u8; L] = [0; L];
+            let mut k : [u8; K] = [0; K];
+            let mut n : [u8; N] = [0; N];
 
             for i in range(0, N) {
                 n[i] = (i * 181 + 123) as u8;
