@@ -1,5 +1,3 @@
-#![macro_escape]
-
 use std::iter::repeat;
 use std::num::{Int,NumCast,cast};
 use std::slice::bytes::copy_memory;
@@ -443,6 +441,7 @@ pub fn decrypt(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) ->
     }
 }
 
+#[macro_export]
 macro_rules! defmodule(
     ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) => 
     (
