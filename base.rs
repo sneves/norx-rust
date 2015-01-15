@@ -3,15 +3,15 @@ use std::num::{Int,NumCast,cast};
 use std::slice::bytes::copy_memory;
 use std::mem::size_of;
 
-const NORX_B : uint = 16; // total words
-const NORX_C : uint =  6; // capacity words
-const NORX_K : uint =  4; // key words
-const NORX_N : uint =  2; // nonce words
-const NORX_R : uint = NORX_B - NORX_C; // rate words
-const NORX_A : uint = NORX_R; // maximum tag size
+const NORX_B : usize = 16; // total words
+const NORX_C : usize =  6; // capacity words
+const NORX_K : usize =  4; // key words
+const NORX_N : usize =  2; // nonce words
+const NORX_R : usize = NORX_B - NORX_C; // rate words
+const NORX_A : usize = NORX_R; // maximum tag size
 
 // XXX: hack; Rust could really use compile-time sizeof(T)
-const MAX_RATE_BYTES : uint = 64 * NORX_R / 8;
+const MAX_RATE_BYTES : usize = 64 * NORX_R / 8;
 
 #[inline]
 fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
@@ -35,32 +35,32 @@ fn store_le<T : Int + NumCast>(v: &mut [u8], mut x: T) {
 }
 
 #[inline]
-fn bytes<T>() -> uint {
+fn bytes<T>() -> usize {
     size_of::<T>()  
 }
 
 #[inline]
-fn bits<T>() -> uint {
+fn bits<T>() -> usize {
     bytes::<T>() * 8
 }
 
 #[inline]
-fn rate_bytes<T>() -> uint {
+fn rate_bytes<T>() -> usize {
     bytes::<T>() * NORX_R
 }
 
 #[inline]
-fn key_bytes<T>() -> uint {
+fn key_bytes<T>() -> usize {
     bytes::<T>() * NORX_K
 }
 
 #[inline]
-fn nonce_bytes<T>() -> uint {
+fn nonce_bytes<T>() -> usize {
     bytes::<T>() * NORX_N
 }
 
 #[inline]
-fn rotations<T: Int>() -> Option<[uint; 4]> {
+fn rotations<T: Int>() -> Option<[usize; 4]> {
     match bits::<T>() {
         32 => Some([ 8, 11, 16, 31]),
         64 => Some([ 8, 19, 40, 63]),
@@ -126,7 +126,7 @@ fn F<T: Int>(x : &mut [T; NORX_B]) {
 
 
 #[inline]
-fn pad(output: &mut [u8], outlen: uint, input: &[u8], inlen: uint) {
+fn pad(output: &mut [u8], outlen: usize, input: &[u8], inlen: usize) {
     for x in output.iter_mut() { *x = 0u8; }
     copy_memory(output, input);
     output[inlen]       = 0x01;
@@ -162,22 +162,22 @@ pub enum WordSize {
 }
 impl Copy for WordSize {}
 
-pub struct Config(pub WordSize, pub uint, pub uint, pub uint);
+pub struct Config(pub WordSize, pub usize, pub usize, pub usize);
 impl Copy for Config {}
 
 fn is_valid_config(cfg: Config) -> bool {
     let Config(w,r,d,a) = cfg;
     if r == 0 || r > 63 { return false; }
     if d != 1 { return false; } /* TODO: parallel modes */
-    if a > (w as uint) * NORX_A || a % 8 != 0 { return false; }
+    if a > (w as usize) * NORX_A || a % 8 != 0 { return false; }
     return true;
 }
 
 struct Sponge<T> {
     s : [T; NORX_B],
-    r : uint,
-    d : uint,
-    a : uint
+    r : usize,
+    d : usize,
+    a : usize
 }
 
 impl<T: Int> Sponge<T> {
@@ -189,7 +189,7 @@ impl<T: Int> Sponge<T> {
     }
 
     fn inject_tag(&mut self, tag: Tag) {
-        self.s[15] = self.s[15] ^ cast(tag as uint).expect("bad tag");
+        self.s[15] = self.s[15] ^ cast(tag as usize).expect("bad tag");
     }
 
     fn inject_param(&mut self) {
@@ -446,9 +446,9 @@ macro_rules! defmodule(
     ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) => 
     (
         const W : WordSize = WordSize::$W;
-        const R : uint = $R;
-        const D : uint = $D;
-        const A : uint = $A;
+        const R : usize = $R;
+        const D : usize = $D;
+        const A : usize = $A;
 
         pub fn encrypt(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8]) -> Vec<u8> {
             base::encrypt(h, m, t, n, k, base::Config(W, R, D, A)).expect("norx: incorrect key or nonce size")
@@ -460,10 +460,10 @@ macro_rules! defmodule(
 
         #[test]
         pub fn test() {
-            const L  : uint = 256;
-            const K  : uint = (WordSize::$W as uint) * 4u / 8u;
-            const N  : uint = (WordSize::$W as uint) * 2u / 8u;
-            const T  : uint = K;
+            const L  : usize = 256;
+            const K  : usize = (WordSize::$W as usize) * 4us / 8us;
+            const N  : usize = (WordSize::$W as usize) * 2us / 8us;
+            const T  : usize = K;
             let mut w : [u8; L] = [0; L];
             let mut h : [u8; L] = [0; L];
             let mut k : [u8; K] = [0; K];
