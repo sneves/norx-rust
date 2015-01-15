@@ -1,3 +1,5 @@
+#![allow(unstable)]
+
 #![feature(unsafe_destructor)]
 
 #[macro_use] pub mod base;
