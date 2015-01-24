@@ -206,13 +206,13 @@ impl<T: Int> Sponge<T> {
         let w = bytes::<T>();
         let (u0, u1, u2, u3) = constants::<T>().expect("constant loading failure");
         self.s[ 0] = u0;
-        self.s[ 1] = load_le(n.slice_from(0*w));
-        self.s[ 2] = load_le(n.slice_from(1*w));
+        self.s[ 1] = load_le(&n[0*w..]);
+        self.s[ 2] = load_le(&n[1*w..]);
         self.s[ 3] = u1;
-        self.s[ 4] = load_le(k.slice_from(0*w));
-        self.s[ 5] = load_le(k.slice_from(1*w));
-        self.s[ 6] = load_le(k.slice_from(2*w));
-        self.s[ 7] = load_le(k.slice_from(3*w));
+        self.s[ 4] = load_le(&k[0*w..]);
+        self.s[ 5] = load_le(&k[1*w..]);
+        self.s[ 6] = load_le(&k[2*w..]);
+        self.s[ 7] = load_le(&k[3*w..]);
         self.s[ 8] = u2;
         self.s[ 9] = u3;
         let (u0, u1, u2, u3) = G(u0, u1, u2, u3);
@@ -233,7 +233,7 @@ impl<T: Int> Sponge<T> {
         self.inject_tag(tag);
         self.permute();
         for i in range(0, NORX_R) {
-            let x : T = load_le(input.slice(i*w, (i+1)*w));
+            let x : T = load_le(&input[i*w..(i+1)*w]);
             self.s[i] = self.s[i] ^ x;
         }
     }
@@ -247,13 +247,13 @@ impl<T: Int> Sponge<T> {
             let mut offset = 0;
 
             while inlen >= block_size {
-                self.absorb_block(input.slice_from(offset), tag);
+                self.absorb_block(&input[offset..], tag);
                 inlen  -= block_size;
                 offset += block_size;
             }
 
-            pad(&mut lastblock, block_size, input.slice_from(offset), inlen);
-            self.absorb_block(lastblock.slice_to(block_size), tag);
+            pad(&mut lastblock, block_size, &input[offset..], inlen);
+            self.absorb_block(&lastblock[..block_size], tag);
         }
     }
 
@@ -270,8 +270,8 @@ impl<T: Int> Sponge<T> {
         self.inject_tag(Tag::PayloadTag);
         self.permute();
         for i in range(0, NORX_R) {
-            self.s[i] = self.s[i] ^ load_le(input.slice(i*w, (i+1)*w));
-            store_le(output.slice_mut(i*w, (i+1)*w), self.s[i]);
+            self.s[i] = self.s[i] ^ load_le(&input[i*w..(i+1)*w]);
+            store_le(&mut output[i*w..(i+1)*w], self.s[i]);
         }
     }
 
@@ -284,14 +284,14 @@ impl<T: Int> Sponge<T> {
             let mut inlen  = input.len();
             let mut offset = 0;
             while inlen >= block_size {
-                self.encrypt_block(output.slice_from_mut(offset), input.slice_from(offset));
+                self.encrypt_block(&mut output[offset..], &input[offset..]);
                 inlen  -= block_size;
                 offset += block_size;
             }
-            pad(&mut lastblock1, block_size, input.slice_from(offset), inlen);
-            self.encrypt_block(lastblock2.slice_to_mut(block_size), 
-                               lastblock1.slice_to(block_size));
-            copy_memory(output.slice_from_mut(offset), lastblock2.slice_to(inlen));
+            pad(&mut lastblock1, block_size, &input[offset..], inlen);
+            self.encrypt_block(&mut lastblock2[..block_size],
+                               &lastblock1[..block_size]);
+            copy_memory(&mut output[offset..], &lastblock2[..inlen]);
         }
     }
 
@@ -300,8 +300,8 @@ impl<T: Int> Sponge<T> {
         self.inject_tag(Tag::PayloadTag);
         self.permute();
         for i in range(0, NORX_R) {
-            let x : T = load_le(input.slice_from(i*w));
-            store_le(output.slice_from_mut(i*w), self.s[i] ^ x);
+            let x : T = load_le(&input[i*w..]);
+            store_le(&mut output[i*w..], self.s[i] ^ x);
             self.s[i] = x;
         }
     }
@@ -315,7 +315,7 @@ impl<T: Int> Sponge<T> {
 
         let mut lastblock = [0u8; MAX_RATE_BYTES];
         for i in range(0, NORX_R) {
-            store_le(lastblock.slice_from_mut(i*w), self.s[i]);
+            store_le(&mut lastblock[i*w..], self.s[i]);
         }
 
         copy_memory(&mut lastblock, input);
@@ -323,12 +323,12 @@ impl<T: Int> Sponge<T> {
         lastblock[block_size-1] ^= 0x80u8;
 
         for i in range(0, NORX_R) {
-            let x : T = load_le(lastblock.slice_from(i*w));
-            store_le(lastblock.slice_from_mut(i*w), self.s[i] ^ x);
+            let x : T = load_le(&lastblock[i*w..]);
+            store_le(&mut lastblock[i*w..], self.s[i] ^ x);
             self.s[i] = x;
         }
 
-        copy_memory(output, lastblock.slice_to(input.len()));
+        copy_memory(output, &lastblock[..input.len()]);
     }
 
     pub fn decrypt_payload(&mut self, output: &mut [u8], input: &[u8]) {
@@ -337,11 +337,11 @@ impl<T: Int> Sponge<T> {
             let mut inlen  = input.len();
             let mut offset = 0;
             while inlen >= block_size {
-                self.decrypt_block(output.slice_from_mut(offset), input.slice_from(offset));
+                self.decrypt_block(&mut output[offset..], &input[offset..]);
                 inlen  -= block_size;
                 offset += block_size;
             }
-            self.decrypt_lastblock(output.slice_from_mut(offset), input.slice_from(offset));
+            self.decrypt_lastblock(&mut output[offset..], &input[offset..]);
         }
     }
 
@@ -352,9 +352,9 @@ impl<T: Int> Sponge<T> {
         self.permute();
         self.permute();
         for i in range(0, NORX_R) {
-            store_le(lastblock.slice_from_mut(i*w), self.s[i]);
+            store_le(&mut lastblock[i*w..], self.s[i]);
         }
-        copy_memory(tag, lastblock.slice_to(self.a / 8));
+        copy_memory(tag, &lastblock[..self.a / 8]);
     }
 
     pub fn new(cfg: Config, n: &[u8], k: &[u8]) -> Option<Sponge<T>> {
@@ -391,9 +391,9 @@ fn encrypt_cfg<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
          None   => return None
     };
     s.absorb_header(h);
-    s.encrypt_payload(c.slice_to_mut(mlen), m);
+    s.encrypt_payload(&mut c[..mlen], m);
     s.absorb_trailer(t);
-    s.finalize(c.slice_from_mut(mlen));
+    s.finalize(&mut c[mlen..]);
 
     return Some(c);
 }
@@ -414,11 +414,11 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     };
 
     s.absorb_header(h);
-    s.decrypt_payload(m.as_mut_slice(), c.slice_to(mlen));
+    s.decrypt_payload(m.as_mut_slice(), &c[..mlen]);
     s.absorb_trailer(t);
     s.finalize(&mut a);
 
-    if verify(c.slice_from(mlen), a.slice_to(alen)) {
+    if verify(&c[mlen..], &a[..alen]) {
         return Some(m);
     } else { 
         return None; 
