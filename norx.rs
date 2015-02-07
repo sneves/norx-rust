@@ -1,6 +1,4 @@
-#![allow(unstable)]
-
-#![feature(unsafe_destructor)]
+#![feature(core, unsafe_destructor)]
 
 #[macro_use] pub mod base;
 pub mod norx6441; 
