@@ -138,8 +138,8 @@ fn verify(x: &[u8], y: &[u8]) -> bool {
         return false; 
     }
     let mut r : u8 = 0;
-    for (i, j) in x.iter().zip(y.iter()) {
-        r |= *i ^ *j;
+    for i in 0..x.len() {
+        r |= x[i] ^ y[i];
     }
     return r == 0;
 }
@@ -370,7 +370,7 @@ impl<T: Int> Sponge<T> {
 #[unsafe_destructor]
 impl<T : Int> Drop for Sponge<T> {
     fn drop(&mut self) {
-        for x in self.s.iter_mut() {
+        for x in &mut self.s {
             *x = Int::zero();
         }
     }

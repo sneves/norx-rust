@@ -8,7 +8,7 @@ pub fn main() {
     let n = [0u8; 16];
     let m = "Hello, World!";
     let c = encrypt(&[], m.as_bytes(), &[], &n, &k);
-    for x in c.iter() { 
+    for x in &c { 
         print!("{:02x} ", *x); 
     }
     println!("");
