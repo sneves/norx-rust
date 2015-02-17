@@ -1,4 +1,4 @@
-
+#![feature(core)]
 extern crate norx;
 use std::str::from_utf8;
 use norx::norx6441::{encrypt,decrypt};
@@ -12,14 +12,14 @@ pub fn main() {
         print!("{:02x} ", *x); 
     }
     println!("");
-    match decrypt(&[], c.as_slice(), &[], &n, &k) {
-        Some(m) => println!("{}", from_utf8(m.as_slice()).unwrap()),
+    match decrypt(&[], &c[..], &[], &n, &k) {
+        Some(m) => println!("{}", from_utf8(&m[..]).unwrap()),
           None  => println!("bad ciphertext")
     }
     let mut c = c;
     c[0] ^= 1; // flip a bit
-    match decrypt(&[], c.as_slice(), &[], &n, &k) {
-        Some(m) => println!("{}", from_utf8(m.as_slice()).unwrap()),
+    match decrypt(&[], &c[..], &[], &n, &k) {
+        Some(m) => println!("{}", from_utf8(&m[..]).unwrap()),
           None  => println!("bad ciphertext")
     }
 }

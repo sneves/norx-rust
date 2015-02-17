@@ -1,6 +1,5 @@
 use std::iter::repeat;
 use std::num::{Int,NumCast,cast};
-use std::slice::bytes::copy_memory;
 use std::mem::size_of;
 
 const NORX_B : usize = 16; // total words
@@ -127,8 +126,8 @@ fn F<T: Int>(x : &mut [T; NORX_B]) {
 
 #[inline]
 fn pad(output: &mut [u8], outlen: usize, input: &[u8], inlen: usize) {
-    for x in output.iter_mut() { *x = 0u8; }
-    copy_memory(output, input);
+    for i in 0..inlen { output[i] = input[i]; }
+    for i in inlen..outlen { output[i] = 0u8; }
     output[inlen]       = 0x01;
     output[outlen - 1] |= 0x80;
 }
@@ -291,7 +290,7 @@ impl<T: Int> Sponge<T> {
             pad(&mut lastblock1, block_size, &input[offset..], inlen);
             self.encrypt_block(&mut lastblock2[..block_size],
                                &lastblock1[..block_size]);
-            copy_memory(&mut output[offset..], &lastblock2[..inlen]);
+            for i in 0..inlen { output[offset+i] = lastblock2[i]; }
         }
     }
 
@@ -318,7 +317,7 @@ impl<T: Int> Sponge<T> {
             store_le(&mut lastblock[i*w..], self.s[i]);
         }
 
-        copy_memory(&mut lastblock, input);
+        for i in 0..input.len() { lastblock[i] = input[i]; }
         lastblock[input.len()]  ^= 0x01u8;
         lastblock[block_size-1] ^= 0x80u8;
 
@@ -328,7 +327,7 @@ impl<T: Int> Sponge<T> {
             self.s[i] = x;
         }
 
-        copy_memory(output, &lastblock[..input.len()]);
+        for i in 0..input.len() { output[i] = lastblock[i]; }
     }
 
     pub fn decrypt_payload(&mut self, output: &mut [u8], input: &[u8]) {
@@ -354,7 +353,7 @@ impl<T: Int> Sponge<T> {
         for i in range(0, NORX_R) {
             store_le(&mut lastblock[i*w..], self.s[i]);
         }
-        copy_memory(tag, &lastblock[..self.a / 8]);
+        for i in 0..(self.a/8) { tag[i] = lastblock[i]; }
     }
 
     pub fn new(cfg: Config, n: &[u8], k: &[u8]) -> Option<Sponge<T>> {
