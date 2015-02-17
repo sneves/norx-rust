@@ -16,7 +16,7 @@ const MAX_RATE_BYTES : usize = 64 * NORX_R / 8;
 fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
     let n = size_of::<T>();
     let mut x : T = Int::zero();
-    for i in range(0, n) {
+    for i in 0..n {
         let b: T = cast(v[i]).unwrap();
         x = x | (b << (i*8));
     }
@@ -27,7 +27,7 @@ fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
 fn store_le<T : Int + NumCast>(v: &mut [u8], mut x: T) {
     let n = size_of::<T>();
     let m : T = cast(0xFFu8).unwrap();
-    for i in range(0, n) {
+    for i in 0..n {
         v[i] = cast(x & m).unwrap();
         x    = x >> 8;
     }
@@ -182,7 +182,7 @@ struct Sponge<T> {
 impl<T: Int> Sponge<T> {
 
     fn permute(&mut self) {
-        for _ in range(0, self.r) {
+        for _ in 0..self.r {
             F(&mut self.s);
         }
     }
@@ -231,7 +231,7 @@ impl<T: Int> Sponge<T> {
         let w = bytes::<T>();
         self.inject_tag(tag);
         self.permute();
-        for i in range(0, NORX_R) {
+        for i in 0..NORX_R {
             let x : T = load_le(&input[i*w..(i+1)*w]);
             self.s[i] = self.s[i] ^ x;
         }
@@ -268,7 +268,7 @@ impl<T: Int> Sponge<T> {
         let w = bytes::<T>();
         self.inject_tag(Tag::PayloadTag);
         self.permute();
-        for i in range(0, NORX_R) {
+        for i in 0..NORX_R {
             self.s[i] = self.s[i] ^ load_le(&input[i*w..(i+1)*w]);
             store_le(&mut output[i*w..(i+1)*w], self.s[i]);
         }
@@ -298,7 +298,7 @@ impl<T: Int> Sponge<T> {
         let w = bytes::<T>();
         self.inject_tag(Tag::PayloadTag);
         self.permute();
-        for i in range(0, NORX_R) {
+        for i in 0..NORX_R {
             let x : T = load_le(&input[i*w..]);
             store_le(&mut output[i*w..], self.s[i] ^ x);
             self.s[i] = x;
@@ -313,7 +313,7 @@ impl<T: Int> Sponge<T> {
         self.permute();
 
         let mut lastblock = [0u8; MAX_RATE_BYTES];
-        for i in range(0, NORX_R) {
+        for i in 0..NORX_R {
             store_le(&mut lastblock[i*w..], self.s[i]);
         }
 
@@ -321,7 +321,7 @@ impl<T: Int> Sponge<T> {
         lastblock[input.len()]  ^= 0x01u8;
         lastblock[block_size-1] ^= 0x80u8;
 
-        for i in range(0, NORX_R) {
+        for i in 0..NORX_R {
             let x : T = load_le(&lastblock[i*w..]);
             store_le(&mut lastblock[i*w..], self.s[i] ^ x);
             self.s[i] = x;
@@ -350,7 +350,7 @@ impl<T: Int> Sponge<T> {
         self.inject_tag(Tag::FinalTag);
         self.permute();
         self.permute();
-        for i in range(0, NORX_R) {
+        for i in 0..NORX_R {
             store_le(&mut lastblock[i*w..], self.s[i]);
         }
         for i in 0..(self.a/8) { tag[i] = lastblock[i]; }
@@ -413,7 +413,7 @@ fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     };
 
     s.absorb_header(h);
-    s.decrypt_payload(m.as_mut_slice(), &c[..mlen]);
+    s.decrypt_payload(&mut m[..], &c[..mlen]);
     s.absorb_trailer(t);
     s.finalize(&mut a);
 
@@ -468,28 +468,28 @@ macro_rules! defmodule(
             let mut k : [u8; K] = [0; K];
             let mut n : [u8; N] = [0; N];
 
-            for i in range(0, N) {
+            for i in 0..N {
                 n[i] = (i * 181 + 123) as u8;
             }
 
-            for i in range(0, K) {
+            for i in 0..K {
                 k[i] = (i * 191 + 123) as u8;
             }
 
-            for i in range(0, L) {
+            for i in 0..L {
                 h[i] = (i * 193 + 123) as u8;
                 w[i] = (i * 197 + 123) as u8;
             }
 
-            for i in range(0, L) {
+            for i in 0..L {
                 let j = T * i + i*(i-1)/2;
-                let mut c = encrypt(h.slice_to(i), w.slice_to(i), &[], &n, &k);
-                assert!(c.as_slice() == KAT.slice(j, j + i + T));
-                let m = decrypt(h.slice_to(i), c.as_slice(), &[], &n, &k).expect("bad ciphertext");
-                assert!(m.as_slice() == w.slice_to(i));
+                let mut c = encrypt(&h[..i], &w[..i], &[], &n, &k);
+                assert!(&c[..] == &KAT[j..j+i+T]);
+                let m = decrypt(&h[..i], &c[..], &[], &n, &k).expect("bad ciphertext");
+                assert!(&m[..] == &w[..i]);
                 // This one is expected to fail
                 c[i] ^= 1;
-                match decrypt(h.slice_to(i), c.as_slice(), &[], &n, &k) {
+                match decrypt(&h[..i], &c[..], &[], &n, &k) {
                     Some(_) => assert!(false),
                     None    => assert!(true)
                 }
