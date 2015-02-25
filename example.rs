@@ -1,4 +1,3 @@
-#![feature(core)]
 extern crate norx;
 use std::str::from_utf8;
 use norx::norx6441::{encrypt,decrypt};

@@ -460,8 +460,8 @@ macro_rules! defmodule(
         #[test]
         pub fn test() {
             const L  : usize = 256;
-            const K  : usize = (WordSize::$W as usize) * 4us / 8us;
-            const N  : usize = (WordSize::$W as usize) * 2us / 8us;
+            const K  : usize = (WordSize::$W as usize) * 4 / 8;
+            const N  : usize = (WordSize::$W as usize) * 2 / 8;
             const T  : usize = K;
             let mut w : [u8; L] = [0; L];
             let mut h : [u8; L] = [0; L];
