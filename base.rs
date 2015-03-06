@@ -84,7 +84,8 @@ fn constants<T : NumCast>() -> Option<(T, T, T, T)> {
 #[inline]
 #[allow(non_snake_case)]
 fn U<T: Int>(x: T, y: T) -> T {
-    x ^ y ^ ((x & y) << 1)
+    let m : T = T::max_value() >> 1; // avoid potential left shift overflow
+    x ^ y ^ ((x & y & m) << 1)
 }
 
 #[inline]
@@ -482,7 +483,7 @@ macro_rules! defmodule(
             }
 
             for i in 0..L {
-                let j = T * i + i*(i-1)/2;
+                let j = T * i + (i*i - i)/2;
                 let mut c = encrypt(&h[..i], &w[..i], &[], &n, &k);
                 assert!(&c[..] == &KAT[j..j+i+T]);
                 let m = decrypt(&h[..i], &c[..], &[], &n, &k).expect("bad ciphertext");
