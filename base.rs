@@ -59,7 +59,7 @@ fn nonce_bytes<T>() -> usize {
 }
 
 #[inline]
-fn rotations<T: Int>() -> Option<[usize; 4]> {
+fn rotations<T: Int>() -> Option<[u32; 4]> {
     match bits::<T>() {
         32 => Some([ 8, 11, 16, 31]),
         64 => Some([ 8, 19, 40, 63]),
