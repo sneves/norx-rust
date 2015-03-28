@@ -173,7 +173,7 @@ fn is_valid_config(cfg: Config) -> bool {
     return true;
 }
 
-struct Sponge<T> {
+struct Sponge<T : Int> {
     s : [T; NORX_B],
     r : usize,
     d : usize,
