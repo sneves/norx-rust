@@ -1,4 +1,4 @@
-#![feature(core, unsafe_destructor)]
+extern crate num;
 
 #[macro_use] pub mod base;
 pub mod norx6441; 

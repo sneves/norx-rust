@@ -6,3 +6,6 @@ authors = []
 [lib]
 name = "norx"
 path = "norx.rs"
+
+[dependencies]
+num = "*"

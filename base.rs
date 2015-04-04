@@ -1,5 +1,6 @@
+use num::traits::{NumCast,Zero,cast};
+use std::ops::{Not,BitAnd,BitOr,BitXor,Shl,Shr};
 use std::iter::repeat;
-use std::num::{Int,NumCast,cast};
 use std::mem::size_of;
 
 const NORX_B : usize = 16; // total words
@@ -12,10 +13,18 @@ const NORX_A : usize = NORX_R; // maximum tag size
 // XXX: hack; Rust could really use compile-time sizeof(T)
 const MAX_RATE_BYTES : usize = 64 * NORX_R / 8;
 
+
+trait Bitwise : Zero + Copy + Not<Output=Self> + BitAnd<Output=Self> + 
+                BitOr<Output=Self> + BitXor<Output=Self> + 
+                Shl<usize, Output=Self> + Shr<usize, Output=Self> {}
+
+impl Bitwise for u32 {}
+impl Bitwise for u64 {}
+
 #[inline]
-fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
+fn load_le<T : Bitwise + NumCast>(v : &[u8]) -> T {
     let n = size_of::<T>();
-    let mut x : T = Int::zero();
+    let mut x : T = T::zero();
     for i in 0..n {
         let b: T = cast(v[i]).unwrap();
         x = x | (b << (i*8));
@@ -24,7 +33,7 @@ fn load_le<T : Int + NumCast>(v : &[u8]) -> T {
 }
 
 #[inline]
-fn store_le<T : Int + NumCast>(v: &mut [u8], mut x: T) {
+fn store_le<T : Bitwise + NumCast>(v: &mut [u8], mut x: T) {
     let n = size_of::<T>();
     let m : T = cast(0xFFu8).unwrap();
     for i in 0..n {
@@ -59,7 +68,13 @@ fn nonce_bytes<T>() -> usize {
 }
 
 #[inline]
-fn rotations<T: Int>() -> Option<[u32; 4]> {
+fn rotate_right<T: Bitwise>(x: T, n: usize) -> T {
+    let b = bits::<T>();
+    (x >> (n%b)) | (x << ((b-n)%b))
+}
+
+#[inline]
+fn rotations<T: Bitwise>() -> Option<[usize; 4]> {
     match bits::<T>() {
         32 => Some([ 8, 11, 16, 31]),
         64 => Some([ 8, 19, 40, 63]),
@@ -67,7 +82,7 @@ fn rotations<T: Int>() -> Option<[u32; 4]> {
     }
 }
 
-fn constants<T : NumCast>() -> Option<(T, T, T, T)> {
+fn constants<T : Bitwise + NumCast>() -> Option<(T, T, T, T)> {
     match bits::<T>() { // Poor man's template specialization
         32 => Some((cast(0x243F6A88u32).unwrap(), 
                     cast(0x85A308D3u32).unwrap(), 
@@ -83,32 +98,32 @@ fn constants<T : NumCast>() -> Option<(T, T, T, T)> {
 
 #[inline]
 #[allow(non_snake_case)]
-fn U<T: Int>(x: T, y: T) -> T {
-    let m : T = T::max_value() >> 1; // avoid potential left shift overflow
+fn U<T: Bitwise>(x: T, y: T) -> T {
+    let m : T = (!T::zero()) >> 1; // avoid potential left shift overflow
     x ^ y ^ ((x & y & m) << 1)
 }
 
 #[inline]
 #[allow(non_snake_case)]
-fn G<T : Int>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
+fn G<T : Bitwise>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
     let r = rotations::<T>().unwrap();
-    a = U(a, b); d = d ^ a; d = d.rotate_right(r[0]);
-    c = U(c, d); b = b ^ c; b = b.rotate_right(r[1]);
-    a = U(a, b); d = d ^ a; d = d.rotate_right(r[2]);
-    c = U(c, d); b = b ^ c; b = b.rotate_right(r[3]);
+    a = U(a, b); d = d ^ a; d = rotate_right(d, r[0]);
+    c = U(c, d); b = b ^ c; b = rotate_right(b, r[1]);
+    a = U(a, b); d = d ^ a; d = rotate_right(d, r[2]);
+    c = U(c, d); b = b ^ c; b = rotate_right(b, r[3]);
     return (a, b, c, d);
 }
 
 #[allow(non_snake_case)]
-fn F<T: Int>(x : &mut [T; NORX_B]) {
+fn F<T: Bitwise>(x : &mut [T; NORX_B]) {
     macro_rules!G(
         ($a: expr, $b: expr, $c: expr, $d: expr) => 
         ({
             let r = rotations::<T>().unwrap();
-            $a = U($a, $b); $d = $d ^ $a; $d = $d.rotate_right(r[0]);
-            $c = U($c, $d); $b = $b ^ $c; $b = $b.rotate_right(r[1]);
-            $a = U($a, $b); $d = $d ^ $a; $d = $d.rotate_right(r[2]);
-            $c = U($c, $d); $b = $b ^ $c; $b = $b.rotate_right(r[3]);
+            $a = U($a, $b); $d = $d ^ $a; $d = rotate_right($d, r[0]);
+            $c = U($c, $d); $b = $b ^ $c; $b = rotate_right($b, r[1]);
+            $a = U($a, $b); $d = $d ^ $a; $d = rotate_right($d, r[2]);
+            $c = U($c, $d); $b = $b ^ $c; $b = rotate_right($b, r[3]);
         })
     );
 
@@ -146,6 +161,7 @@ fn verify(x: &[u8], y: &[u8]) -> bool {
 }
 
 #[allow(dead_code)]
+#[derive(Copy, Clone)]
 enum Tag {
     HeaderTag  = 1 << 0,
     PayloadTag = 1 << 1,
@@ -154,16 +170,15 @@ enum Tag {
     BranchTag  = 1 << 4,
     MergeTag   = 1 << 5
 }
-impl Copy for Tag {}
 
+#[derive(Copy, Clone)]
 pub enum WordSize {
     Norx32 = 32,
     Norx64 = 64
 }
-impl Copy for WordSize {}
 
+#[derive(Copy, Clone)]
 pub struct Config(pub WordSize, pub usize, pub usize, pub usize);
-impl Copy for Config {}
 
 fn is_valid_config(cfg: Config) -> bool {
     let Config(w,r,d,a) = cfg;
@@ -173,14 +188,14 @@ fn is_valid_config(cfg: Config) -> bool {
     return true;
 }
 
-struct Sponge<T : Int> {
+struct Sponge<T : Bitwise + NumCast> {
     s : [T; NORX_B],
     r : usize,
     d : usize,
     a : usize
 }
 
-impl<T: Int> Sponge<T> {
+impl<T: Bitwise + NumCast> Sponge<T> {
 
     fn permute(&mut self) {
         for _ in 0..self.r {
@@ -362,24 +377,24 @@ impl<T: Int> Sponge<T> {
         if !is_valid_config(cfg) { return None; }
         if k.len() != key_bytes::<T>() { return None; }
         if n.len() != nonce_bytes::<T>() { return None; }
-        let mut s : Sponge<T> = Sponge{s : [Int::zero(); 16], r : r, d : d, a : a};
+        let mut s : Sponge<T> = Sponge{s : [T::zero(); 16], r : r, d : d, a : a};
         s.init(n, k);
         return Some(s);
     }
 }
 
-#[unsafe_destructor]
-impl<T : Int> Drop for Sponge<T> {
+
+impl<T : Bitwise + NumCast> Drop for Sponge<T> {
     fn drop(&mut self) {
         for x in &mut self.s {
-            *x = Int::zero();
+            *x = T::zero();
         }
     }
 }
 
 
 
-fn encrypt_cfg<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
+fn encrypt_cfg<T: Bitwise + NumCast>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(_,_,_,abits) = cfg;
     let alen = abits / 8;
     let mlen = m.len();
@@ -398,7 +413,7 @@ fn encrypt_cfg<T: Int>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Co
     return Some(c);
 }
 
-fn decrypt_cfg<T: Int>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
+fn decrypt_cfg<T: Bitwise + NumCast>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(_,_,_,abits) = cfg;
     let alen = abits / 8;
     let clen = c.len();
