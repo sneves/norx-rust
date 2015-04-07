@@ -7,5 +7,9 @@ authors = []
 name = "norx"
 path = "norx.rs"
 
+[[bin]]
+name = "example"
+path = "example.rs"
+
 [dependencies]
 num = "*"
