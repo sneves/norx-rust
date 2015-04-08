@@ -1,5 +1,4 @@
-use num::traits::{NumCast,Zero,cast};
-use std::ops::{Not,BitAnd,BitOr,BitXor,Shl,Shr};
+use num::traits::{PrimInt,cast};
 use std::iter::repeat;
 use std::mem::size_of;
 
@@ -13,16 +12,8 @@ const NORX_A : usize = NORX_R; // maximum tag size
 // XXX: hack; Rust could really use compile-time sizeof(T)
 const MAX_RATE_BYTES : usize = 64 * NORX_R / 8;
 
-
-trait Bitwise : Zero + Copy + Not<Output=Self> + BitAnd<Output=Self> + 
-                BitOr<Output=Self> + BitXor<Output=Self> + 
-                Shl<usize, Output=Self> + Shr<usize, Output=Self> {}
-
-impl Bitwise for u32 {}
-impl Bitwise for u64 {}
-
 #[inline]
-fn load_le<T : Bitwise + NumCast>(v : &[u8]) -> T {
+fn load_le<T : PrimInt>(v : &[u8]) -> T {
     let n = size_of::<T>();
     let mut x : T = T::zero();
     for i in 0..n {
@@ -33,7 +24,7 @@ fn load_le<T : Bitwise + NumCast>(v : &[u8]) -> T {
 }
 
 #[inline]
-fn store_le<T : Bitwise + NumCast>(v: &mut [u8], mut x: T) {
+fn store_le<T : PrimInt>(v: &mut [u8], mut x: T) {
     let n = size_of::<T>();
     let m : T = cast(0xFFu8).unwrap();
     for i in 0..n {
@@ -44,7 +35,7 @@ fn store_le<T : Bitwise + NumCast>(v: &mut [u8], mut x: T) {
 
 #[inline]
 fn bytes<T>() -> usize {
-    size_of::<T>()  
+    size_of::<T>()
 }
 
 #[inline]
@@ -68,13 +59,7 @@ fn nonce_bytes<T>() -> usize {
 }
 
 #[inline]
-fn rotate_right<T: Bitwise>(x: T, n: usize) -> T {
-    let b = bits::<T>();
-    (x >> (n%b)) | (x << ((b-n)%b))
-}
-
-#[inline]
-fn rotations<T: Bitwise>() -> Option<[usize; 4]> {
+fn rotations<T: PrimInt>() -> Option<[u32; 4]> {
     match bits::<T>() {
         32 => Some([ 8, 11, 16, 31]),
         64 => Some([ 8, 19, 40, 63]),
@@ -82,48 +67,48 @@ fn rotations<T: Bitwise>() -> Option<[usize; 4]> {
     }
 }
 
-fn constants<T : Bitwise + NumCast>() -> Option<(T, T, T, T)> {
+fn constants<T : PrimInt>() -> Option<(T, T, T, T)> {
     match bits::<T>() { // Poor man's template specialization
-        32 => Some((cast(0x243F6A88u32).unwrap(), 
-                    cast(0x85A308D3u32).unwrap(), 
-                    cast(0x13198A2Eu32).unwrap(), 
+        32 => Some((cast(0x243F6A88u32).unwrap(),
+                    cast(0x85A308D3u32).unwrap(),
+                    cast(0x13198A2Eu32).unwrap(),
                     cast(0x03707344u32).unwrap())),
-        64 => Some((cast(0x243F6A8885A308D3u64).unwrap(), 
-                    cast(0x13198A2E03707344u64).unwrap(), 
-                    cast(0xA4093822299F31D0u64).unwrap(), 
+        64 => Some((cast(0x243F6A8885A308D3u64).unwrap(),
+                    cast(0x13198A2E03707344u64).unwrap(),
+                    cast(0xA4093822299F31D0u64).unwrap(),
                     cast(0x082EFA98EC4E6C89u64).unwrap())),
-         _ => None 
+         _ => None
     }
 }
 
 #[inline]
 #[allow(non_snake_case)]
-fn U<T: Bitwise>(x: T, y: T) -> T {
+fn U<T: PrimInt>(x: T, y: T) -> T {
     let m : T = (!T::zero()) >> 1; // avoid potential left shift overflow
     x ^ y ^ ((x & y & m) << 1)
 }
 
 #[inline]
 #[allow(non_snake_case)]
-fn G<T : Bitwise>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
+fn G<T : PrimInt>(mut a: T, mut b: T, mut c: T, mut d: T) -> (T, T, T, T) {
     let r = rotations::<T>().unwrap();
-    a = U(a, b); d = d ^ a; d = rotate_right(d, r[0]);
-    c = U(c, d); b = b ^ c; b = rotate_right(b, r[1]);
-    a = U(a, b); d = d ^ a; d = rotate_right(d, r[2]);
-    c = U(c, d); b = b ^ c; b = rotate_right(b, r[3]);
+    a = U(a, b); d = d ^ a; d = d.rotate_right(r[0]);
+    c = U(c, d); b = b ^ c; b = b.rotate_right(r[1]);
+    a = U(a, b); d = d ^ a; d = d.rotate_right(r[2]);
+    c = U(c, d); b = b ^ c; b = b.rotate_right(r[3]);
     return (a, b, c, d);
 }
 
 #[allow(non_snake_case)]
-fn F<T: Bitwise>(x : &mut [T; NORX_B]) {
+fn F<T: PrimInt>(x : &mut [T; NORX_B]) {
     macro_rules!G(
-        ($a: expr, $b: expr, $c: expr, $d: expr) => 
+        ($a: expr, $b: expr, $c: expr, $d: expr) =>
         ({
             let r = rotations::<T>().unwrap();
-            $a = U($a, $b); $d = $d ^ $a; $d = rotate_right($d, r[0]);
-            $c = U($c, $d); $b = $b ^ $c; $b = rotate_right($b, r[1]);
-            $a = U($a, $b); $d = $d ^ $a; $d = rotate_right($d, r[2]);
-            $c = U($c, $d); $b = $b ^ $c; $b = rotate_right($b, r[3]);
+            $a = U($a, $b); $d = $d ^ $a; $d = $d.rotate_right(r[0]);
+            $c = U($c, $d); $b = $b ^ $c; $b = $b.rotate_right(r[1]);
+            $a = U($a, $b); $d = $d ^ $a; $d = $d.rotate_right(r[2]);
+            $c = U($c, $d); $b = $b ^ $c; $b = $b.rotate_right(r[3]);
         })
     );
 
@@ -136,7 +121,7 @@ fn F<T: Bitwise>(x : &mut [T; NORX_B]) {
     G!(x[ 0], x[ 5], x[10], x[15]);
     G!(x[ 1], x[ 6], x[11], x[12]);
     G!(x[ 2], x[ 7], x[ 8], x[13]);
-    G!(x[ 3], x[ 4], x[ 9], x[14]); 
+    G!(x[ 3], x[ 4], x[ 9], x[14]);
 }
 
 
@@ -150,8 +135,8 @@ fn pad(output: &mut [u8], outlen: usize, input: &[u8], inlen: usize) {
 
 #[inline]
 fn verify(x: &[u8], y: &[u8]) -> bool {
-    if x.len() != y.len() { 
-        return false; 
+    if x.len() != y.len() {
+        return false;
     }
     let mut r : u8 = 0;
     for i in 0..x.len() {
@@ -188,14 +173,14 @@ fn is_valid_config(cfg: Config) -> bool {
     return true;
 }
 
-struct Sponge<T : Bitwise + NumCast> {
+struct Sponge<T: PrimInt> {
     s : [T; NORX_B],
     r : usize,
     d : usize,
     a : usize
 }
 
-impl<T: Bitwise + NumCast> Sponge<T> {
+impl<T: PrimInt> Sponge<T> {
 
     fn permute(&mut self) {
         for _ in 0..self.r {
@@ -280,7 +265,7 @@ impl<T: Bitwise + NumCast> Sponge<T> {
         self.absorb(input, Tag::TrailerTag);
     }
 
-    fn encrypt_block(&mut self, output: &mut [u8], input: &[u8]) {          
+    fn encrypt_block(&mut self, output: &mut [u8], input: &[u8]) {
         let w = bytes::<T>();
         self.inject_tag(Tag::PayloadTag);
         self.permute();
@@ -324,7 +309,7 @@ impl<T: Bitwise + NumCast> Sponge<T> {
     fn decrypt_lastblock(&mut self, output: &mut [u8], input: &[u8]) {
         let w = bytes::<T>();
         let block_size = rate_bytes::<T>();
-        
+
         self.inject_tag(Tag::PayloadTag);
         self.permute();
 
@@ -384,7 +369,7 @@ impl<T: Bitwise + NumCast> Sponge<T> {
 }
 
 
-impl<T : Bitwise + NumCast> Drop for Sponge<T> {
+impl<T : PrimInt> Drop for Sponge<T> {
     fn drop(&mut self) {
         for x in &mut self.s {
             *x = T::zero();
@@ -394,7 +379,7 @@ impl<T : Bitwise + NumCast> Drop for Sponge<T> {
 
 
 
-fn encrypt_cfg<T: Bitwise + NumCast>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
+fn encrypt_cfg<T: PrimInt>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(_,_,_,abits) = cfg;
     let alen = abits / 8;
     let mlen = m.len();
@@ -413,7 +398,7 @@ fn encrypt_cfg<T: Bitwise + NumCast>(h: &[u8], m: &[u8], t: &[u8], n: &[u8], k: 
     return Some(c);
 }
 
-fn decrypt_cfg<T: Bitwise + NumCast>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
+fn decrypt_cfg<T: PrimInt>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) -> Option<Vec<u8>> {
     let Config(_,_,_,abits) = cfg;
     let alen = abits / 8;
     let clen = c.len();
@@ -435,8 +420,8 @@ fn decrypt_cfg<T: Bitwise + NumCast>(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: 
 
     if verify(&c[mlen..], &a[..alen]) {
         return Some(m);
-    } else { 
-        return None; 
+    } else {
+        return None;
     }
 }
 
@@ -458,7 +443,7 @@ pub fn decrypt(h: &[u8], c: &[u8], t: &[u8], n: &[u8], k: &[u8], cfg: Config) ->
 
 #[macro_export]
 macro_rules! defmodule(
-    ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) => 
+    ($name: ident, $W: ident, $R: expr, $D: expr, $A: expr) =>
     (
         const W : WordSize = WordSize::$W;
         const R : usize = $R;
